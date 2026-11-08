@@ -1,0 +1,1154 @@
+-- // KURWA [BY LUTOWNIK] - Final Clean Update
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local Lighting = game:GetService("Lighting")
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local rootPart = character:WaitForChild("HumanoidRootPart")
+
+player.CharacterAdded:Connect(function(char)
+	character = char
+	humanoid = char:WaitForChild("Humanoid")
+	rootPart = char:WaitForChild("HumanoidRootPart")
+end)
+
+-- Master ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "KurwaGuiLutownikFinal"
+screenGui.ResetOnSpawn = false
+
+pcall(function() screenGui.Parent = CoreGui end)
+if not screenGui.Parent then screenGui.Parent = player:WaitForChild("PlayerGui") end
+
+-- FOV Circle Drawing
+local fovDrawing = Drawing.new("Circle")
+fovDrawing.Visible = false
+fovDrawing.Radius = 80
+fovDrawing.Color = Color3.fromRGB(160, 32, 240)
+fovDrawing.Thickness = 1
+fovDrawing.Filled = false
+fovDrawing.Transparency = 0.6
+
+-- Toggles & States Table
+local togglesState = {}
+local folderName = "KurwaConfigs"
+
+local function saveToFile(fileName, data)
+	if writefile then
+		pcall(function()
+			if makefolder then makefolder(folderName) end
+		end)
+		local success, encoded = pcall(function()
+			return HttpService:JSONEncode(data)
+		end)
+		if success then
+			pcall(function()
+				writefile(folderName .. "/" .. fileName .. ".json", encoded)
+			end)
+		end
+	end
+end
+
+local function loadFromFile(fileName)
+	if readfile and isfile then
+		local path = folderName .. "/" .. fileName .. ".json"
+		local successCheck, exists = pcall(function() return isfile(path) end)
+		if successCheck and exists then
+			local successRead, content = pcall(function() return readfile(path) end)
+			if successRead and content then
+				local successDecode, decoded = pcall(function() return HttpService:JSONDecode(content) end)
+				if successDecode and decoded then
+					return decoded
+				end
+			end
+		end
+	end
+	return nil
+end
+
+-- Głównodowodzące okno (Szerokość 260, Wysokość 380)
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 260, 0, 380)
+mainFrame.Position = UDim2.new(0, 30, 0, 100)
+mainFrame.BackgroundColor3 = Color3.fromRGB(10, 8, 14)
+mainFrame.BorderSizePixel = 1
+mainFrame.BorderColor3 = Color3.fromRGB(138, 43, 226)
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = screenGui
+
+local initialAutoLoad = loadFromFile("autoload_settings")
+if initialAutoLoad and initialAutoLoad.WindowPos then
+	mainFrame.Position = UDim2.new(0, initialAutoLoad.WindowPos.X, 0, initialAutoLoad.WindowPos.Y)
+end
+
+-- Title Bar
+local titleBar = Instance.new("Frame")
+titleBar.Size = UDim2.new(1, 0, 0, 26)
+titleBar.BackgroundColor3 = Color3.fromRGB(6, 4, 10)
+titleBar.BorderSizePixel = 0
+titleBar.Parent = mainFrame
+
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(0, 95, 1, 0)
+titleLabel.Position = UDim2.new(0, 4, 0, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "KURWA [LUTOWNIK]"
+titleLabel.TextColor3 = Color3.fromRGB(200, 180, 225)
+titleLabel.Font = Enum.Font.Code
+titleLabel.TextSize = 8
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Parent = titleBar
+
+local searchBox = Instance.new("TextBox")
+searchBox.Size = UDim2.new(0, 70, 0, 18)
+searchBox.Position = UDim2.new(1, -148, 0.5, -9)
+searchBox.BackgroundColor3 = Color3.fromRGB(14, 10, 20)
+searchBox.BorderSizePixel = 1
+searchBox.BorderColor3 = Color3.fromRGB(50, 40, 70)
+searchBox.Text = ""
+searchBox.PlaceholderText = "Search..."
+searchBox.PlaceholderColor3 = Color3.fromRGB(100, 90, 120)
+searchBox.TextColor3 = Color3.fromRGB(200, 180, 225)
+searchBox.Font = Enum.Font.Code
+searchBox.TextSize = 8
+searchBox.Parent = titleBar
+
+local configTopBtn = Instance.new("TextButton")
+configTopBtn.Size = UDim2.new(0, 22, 0, 26)
+configTopBtn.Position = UDim2.new(1, -74, 0, 0)
+configTopBtn.BackgroundColor3 = Color3.fromRGB(18, 14, 26)
+configTopBtn.BorderSizePixel = 0
+configTopBtn.Text = "CFG"
+configTopBtn.TextColor3 = Color3.fromRGB(160, 80, 255)
+configTopBtn.Font = Enum.Font.Code
+configTopBtn.TextSize = 8
+configTopBtn.Parent = titleBar
+
+local minButton = Instance.new("TextButton")
+minButton.Size = UDim2.new(0, 24, 0, 26)
+minButton.Position = UDim2.new(1, -48, 0, 0)
+minButton.BackgroundColor3 = Color3.fromRGB(18, 14, 26)
+minButton.BorderSizePixel = 0
+minButton.Text = "-"
+minButton.TextColor3 = Color3.fromRGB(200, 200, 200)
+minButton.Font = Enum.Font.Code
+minButton.TextSize = 14
+minButton.Parent = titleBar
+
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.new(0, 24, 0, 26)
+closeButton.Position = UDim2.new(1, -24, 0, 0)
+closeButton.BackgroundColor3 = Color3.fromRGB(30, 10, 20)
+closeButton.BorderSizePixel = 0
+closeButton.Text = "X"
+closeButton.TextColor3 = Color3.fromRGB(220, 60, 60)
+closeButton.Font = Enum.Font.Code
+closeButton.TextSize = 12
+closeButton.Parent = mainFrame
+
+-- Config Popup Window
+local configPopup = Instance.new("Frame")
+configPopup.Size = UDim2.new(0, 210, 0, 250)
+configPopup.Position = UDim2.new(1, 5, 0, 0)
+configPopup.BackgroundColor3 = Color3.fromRGB(10, 8, 14)
+configPopup.BorderSizePixel = 1
+configPopup.BorderColor3 = Color3.fromRGB(138, 43, 226)
+configPopup.Visible = false
+configPopup.Parent = mainFrame
+
+local popupTitle = Instance.new("TextLabel")
+popupTitle.Size = UDim2.new(1, 0, 0, 24)
+popupTitle.BackgroundColor3 = Color3.fromRGB(6, 4, 10)
+popupTitle.BorderSizePixel = 0
+popupTitle.Text = " CONFIGS"
+popupTitle.TextColor3 = Color3.fromRGB(200, 180, 225)
+popupTitle.Font = Enum.Font.Code
+popupTitle.TextSize = 10
+popupTitle.TextXAlignment = Enum.TextXAlignment.Left
+popupTitle.Parent = configPopup
+
+local configNameBox = Instance.new("TextBox")
+configNameBox.Size = UDim2.new(1, -10, 0, 24)
+configNameBox.Position = UDim2.new(0, 5, 0, 30)
+configNameBox.BackgroundColor3 = Color3.fromRGB(14, 10, 20)
+configNameBox.BorderSizePixel = 1
+configNameBox.BorderColor3 = Color3.fromRGB(50, 40, 70)
+configNameBox.Text = "my_config"
+configNameBox.TextColor3 = Color3.fromRGB(190, 180, 210)
+configNameBox.Font = Enum.Font.Code
+configNameBox.TextSize = 10
+configNameBox.Parent = configPopup
+
+local configScroll = Instance.new("ScrollingFrame")
+configScroll.Size = UDim2.new(1, -10, 0, 110)
+configScroll.Position = UDim2.new(0, 5, 0, 60)
+configScroll.BackgroundColor3 = Color3.fromRGB(8, 6, 12)
+configScroll.BorderSizePixel = 1
+configScroll.BorderColor3 = Color3.fromRGB(50, 40, 70)
+configScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+configScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+configScroll.ScrollBarThickness = 3
+configScroll.Parent = configPopup
+
+local configListLayout = Instance.new("UIListLayout")
+configListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+configListLayout.Parent = configScroll
+
+local selectedConfig = ""
+
+local function getAvailableConfigs()
+	local list = {}
+	if listfiles then
+		local success, files = pcall(function() return listfiles(folderName) end)
+		if success and files then
+			for _, file in ipairs(files) do
+				local name = file:match("([^/]+)%.json$")
+				if name and name ~= "autoload_settings" then
+					list[name] = true
+				end
+			end
+		end
+	end
+	return list
+end
+
+local function refreshConfigList()
+	for _, child in pairs(configScroll:GetChildren()) do
+		if child:IsA("TextButton") then child:Destroy() end
+	end
+	for cfgName, _ in pairs(getAvailableConfigs()) do
+		local btn = Instance.new("TextButton")
+		btn.Size = UDim2.new(1, 0, 0, 20)
+		btn.BackgroundTransparency = (selectedConfig == cfgName) and 0 or 1
+		btn.BackgroundColor3 = Color3.fromRGB(40, 20, 60)
+		btn.Text = "  " .. cfgName
+		btn.TextColor3 = Color3.fromRGB(200, 180, 225)
+		btn.Font = Enum.Font.Code
+		btn.TextSize = 10
+		btn.TextXAlignment = Enum.TextXAlignment.Left
+		btn.Parent = configScroll
+
+		btn.MouseButton1Click:Connect(function()
+			selectedConfig = cfgName
+			refreshConfigList()
+		end)
+	end
+end
+refreshConfigList()
+
+local saveBtn = Instance.new("TextButton")
+saveBtn.Size = UDim2.new(0.3, 0, 0, 24)
+saveBtn.Position = UDim2.new(0, 5, 0, 180)
+saveBtn.BackgroundColor3 = Color3.fromRGB(18, 14, 26)
+saveBtn.BorderSizePixel = 1
+saveBtn.BorderColor3 = Color3.fromRGB(50, 40, 70)
+saveBtn.Text = "SAVE"
+saveBtn.TextColor3 = Color3.fromRGB(160, 80, 255)
+saveBtn.Font = Enum.Font.Code
+saveBtn.TextSize = 9
+saveBtn.Parent = configPopup
+
+local loadBtn = Instance.new("TextButton")
+loadBtn.Size = UDim2.new(0.3, 0, 0, 24)
+loadBtn.Position = UDim2.new(0.35, 0, 0, 180)
+loadBtn.BackgroundColor3 = Color3.fromRGB(18, 14, 26)
+loadBtn.BorderSizePixel = 1
+loadBtn.BorderColor3 = Color3.fromRGB(50, 40, 70)
+loadBtn.Text = "LOAD"
+loadBtn.TextColor3 = Color3.fromRGB(80, 200, 255)
+loadBtn.Font = Enum.Font.Code
+loadBtn.TextSize = 9
+loadBtn.Parent = configPopup
+
+local deleteBtn = Instance.new("TextButton")
+deleteBtn.Size = UDim2.new(0.3, 0, 0, 24)
+deleteBtn.Position = UDim2.new(0.7, -5, 0, 180)
+deleteBtn.BackgroundColor3 = Color3.fromRGB(30, 10, 20)
+deleteBtn.BorderSizePixel = 1
+deleteBtn.BorderColor3 = Color3.fromRGB(70, 30, 30)
+deleteBtn.Text = "DELETE"
+deleteBtn.TextColor3 = Color3.fromRGB(220, 60, 60)
+deleteBtn.Font = Enum.Font.Code
+deleteBtn.TextSize = 9
+deleteBtn.Parent = configPopup
+
+local autoLoadToggleBtn = Instance.new("TextButton")
+autoLoadToggleBtn.Size = UDim2.new(1, -10, 0, 22)
+autoLoadToggleBtn.Position = UDim2.new(0, 5, 0, 212)
+autoLoadToggleBtn.BackgroundColor3 = Color3.fromRGB(14, 10, 20)
+autoLoadToggleBtn.BorderSizePixel = 1
+autoLoadToggleBtn.BorderColor3 = Color3.fromRGB(50, 40, 70)
+autoLoadToggleBtn.Text = "AUTO-LOAD: OFF"
+autoLoadToggleBtn.TextColor3 = Color3.fromRGB(150, 140, 170)
+autoLoadToggleBtn.Font = Enum.Font.Code
+autoLoadToggleBtn.TextSize = 9
+autoLoadToggleBtn.Parent = configPopup
+
+local autoLoadActive = false
+if initialAutoLoad and initialAutoLoad.AutoLoad then
+	autoLoadActive = true
+	autoLoadToggleBtn.Text = "AUTO-LOAD: ON"
+	autoLoadToggleBtn.TextColor3 = Color3.fromRGB(160, 80, 255)
+end
+
+local registeredToggles = {}
+
+autoLoadToggleBtn.MouseButton1Click:Connect(function()
+	autoLoadActive = not autoLoadActive
+	autoLoadToggleBtn.Text = autoLoadActive and "AUTO-LOAD: ON" or "AUTO-LOAD: OFF"
+	autoLoadToggleBtn.TextColor3 = autoLoadActive and Color3.fromRGB(160, 80, 255) or Color3.fromRGB(150, 140, 170)
+	
+	local settingsData = {
+		Settings = togglesState,
+		WindowPos = { X = mainFrame.AbsolutePosition.X, Y = mainFrame.AbsolutePosition.Y },
+		AutoLoad = autoLoadActive
+	}
+	saveToFile("autoload_settings", settingsData)
+end)
+
+saveBtn.MouseButton1Click:Connect(function()
+	local name = configNameBox.Text
+	if #name > 0 then
+		local dataToSave = {
+			Settings = togglesState,
+			WindowPos = { X = mainFrame.AbsolutePosition.X, Y = mainFrame.AbsolutePosition.Y },
+			AutoLoad = autoLoadActive
+		}
+		saveToFile(name, dataToSave)
+		refreshConfigList()
+	end
+end)
+
+loadBtn.MouseButton1Click:Connect(function()
+	if selectedConfig ~= "" then
+		local data = loadFromFile(selectedConfig)
+		if data then
+			if data.WindowPos then
+				mainFrame.Position = UDim2.new(0, data.WindowPos.X, 0, data.WindowPos.Y)
+			end
+			if data.Settings then
+				for tName, stateVal in pairs(data.Settings) do
+					if registeredToggles[tName] then
+						registeredToggles[tName].SetState(stateVal)
+					end
+				end
+			end
+		end
+	end
+end)
+
+deleteBtn.MouseButton1Click:Connect(function()
+	if selectedConfig ~= "" and delfile then
+		pcall(function() delfile(folderName .. "/" .. selectedConfig .. ".json") end)
+		selectedConfig = ""
+		refreshConfigList()
+	end
+end)
+
+configTopBtn.MouseButton1Click:Connect(function()
+	configPopup.Visible = not configPopup.Visible
+end)
+
+-- Content Container
+local contentContainer = Instance.new("ScrollingFrame")
+contentContainer.Size = UDim2.new(1, 0, 1, -26)
+contentContainer.Position = UDim2.new(0, 0, 0, 26)
+contentContainer.BackgroundTransparency = 1
+contentContainer.BorderSizePixel = 0
+contentContainer.CanvasSize = UDim2.new(0, 0, 0, 1100)
+contentContainer.ScrollBarThickness = 3
+contentContainer.ScrollBarImageColor3 = Color3.fromRGB(138, 43, 226)
+contentContainer.Parent = mainFrame
+
+local uiList = Instance.new("UIListLayout")
+uiList.SortOrder = Enum.SortOrder.LayoutOrder
+uiList.Padding = UDim.new(0, 6)
+uiList.Parent = contentContainer
+
+local uiPadding = Instance.new("UIPadding")
+uiPadding.PaddingTop = UDim.new(0, 6)
+uiPadding.PaddingLeft = UDim.new(0, 8)
+uiPadding.PaddingRight = UDim.new(0, 8)
+uiPadding.Parent = contentContainer
+
+local allElements = {}
+
+-- --- UI HELPERS ---
+local function createCategory(name)
+	local categoryFrame = Instance.new("Frame")
+	categoryFrame.Size = UDim2.new(1, 0, 0, 24)
+	categoryFrame.BackgroundTransparency = 1
+	categoryFrame.ClipsDescendants = true
+	categoryFrame.Parent = contentContainer
+
+	local headerButton = Instance.new("TextButton")
+	headerButton.Size = UDim2.new(1, 0, 0, 24)
+	headerButton.BackgroundColor3 = Color3.fromRGB(18, 14, 26)
+	headerButton.BorderSizePixel = 1
+	headerButton.BorderColor3 = Color3.fromRGB(60, 30, 90)
+	headerButton.Text = "  [+] " .. name
+	headerButton.TextColor3 = Color3.fromRGB(180, 130, 240)
+	headerButton.Font = Enum.Font.Code
+	headerButton.TextSize = 10
+	headerButton.TextXAlignment = Enum.TextXAlignment.Left
+	headerButton.Parent = categoryFrame
+
+	local itemContainer = Instance.new("Frame")
+	itemContainer.Position = UDim2.new(0, 0, 0, 26)
+	itemContainer.Size = UDim2.new(1, 0, 0, 0)
+	itemContainer.BackgroundTransparency = 1
+	itemContainer.AutomaticSize = Enum.AutomaticSize.Y
+	itemContainer.Parent = categoryFrame
+
+	local itemList = Instance.new("UIListLayout")
+	itemList.SortOrder = Enum.SortOrder.LayoutOrder
+	itemList.Padding = UDim.new(0, 5)
+	itemList.Parent = itemContainer
+
+	local expanded = false
+	headerButton.MouseButton1Click:Connect(function()
+		expanded = not expanded
+		if expanded then
+			headerButton.Text = "  [-] " .. name
+			headerButton.TextColor3 = Color3.fromRGB(210, 160, 255)
+			task.wait()
+			categoryFrame.Size = UDim2.new(1, 0, 0, 26 + itemContainer.AbsoluteSize.Y + 4)
+		else
+			headerButton.Text = "  [+] " .. name
+			headerButton.TextColor3 = Color3.fromRGB(180, 130, 240)
+			categoryFrame.Size = UDim2.new(1, 0, 0, 24)
+		end
+	end)
+
+	return itemContainer, categoryFrame
+end
+
+local function createToggleWithBind(parent, name, defaultKey, modeFunc, callback)
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.new(1, 0, 0, 24)
+	frame.BackgroundTransparency = 1
+	frame.Parent = parent
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(0.48, 0, 1, 0)
+	label.BackgroundTransparency = 1
+	label.Text = name
+	label.TextColor3 = Color3.fromRGB(150, 140, 170)
+	label.Font = Enum.Font.Code
+	label.TextSize = 9
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.Parent = frame
+
+	local rightContainer = Instance.new("Frame")
+	rightContainer.Size = UDim2.new(0, 80, 0, 18)
+	rightContainer.Position = UDim2.new(1, -80, 0.5, -9)
+	rightContainer.BackgroundTransparency = 1
+	rightContainer.Parent = frame
+
+	local rightLayout = Instance.new("UIListLayout")
+	rightLayout.FillDirection = Enum.FillDirection.Horizontal
+	rightLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	rightLayout.Padding = UDim.new(0, 3)
+	rightLayout.Parent = rightContainer
+
+	local bindBtn = Instance.new("TextButton")
+	bindBtn.Size = UDim2.new(0, 36, 0, 18)
+	bindBtn.LayoutOrder = 1
+	bindBtn.BackgroundColor3 = Color3.fromRGB(14, 10, 20)
+	bindBtn.BorderSizePixel = 1
+	bindBtn.BorderColor3 = Color3.fromRGB(50, 40, 70)
+	bindBtn.Text = defaultKey
+	bindBtn.TextColor3 = Color3.fromRGB(170, 150, 200)
+	bindBtn.Font = Enum.Font.Code
+	bindBtn.TextSize = 8
+	bindBtn.Parent = rightContainer
+
+	local toggleBtn = Instance.new("TextButton")
+	toggleBtn.Size = UDim2.new(0, 38, 0, 18)
+	toggleBtn.LayoutOrder = 2
+	toggleBtn.BackgroundColor3 = Color3.fromRGB(14, 10, 20)
+	toggleBtn.BorderSizePixel = 1
+	toggleBtn.BorderColor3 = Color3.fromRGB(50, 40, 70)
+	toggleBtn.Text = "OFF"
+	toggleBtn.TextColor3 = Color3.fromRGB(140, 40, 40)
+	toggleBtn.Font = Enum.Font.Code
+	toggleBtn.TextSize = 8
+	toggleBtn.Parent = rightContainer
+
+	local state = false
+	togglesState[name] = false
+	local currentKey = (defaultKey == "M2") and Enum.UserInputType.MouseButton2 or ((defaultKey ~= "---" and Enum.KeyCode[defaultKey]) or nil)
+
+	local function setState(newState)
+		state = newState
+		if state then
+			toggleBtn.Text = "ON"
+			toggleBtn.TextColor3 = Color3.fromRGB(160, 80, 255)
+			toggleBtn.BorderColor3 = Color3.fromRGB(138, 43, 226)
+		else
+			toggleBtn.Text = "OFF"
+			toggleBtn.TextColor3 = Color3.fromRGB(140, 40, 40)
+			toggleBtn.BorderColor3 = Color3.fromRGB(50, 40, 70)
+		end
+		togglesState[name] = state
+		if autoLoadActive then
+			local settingsData = {
+				Settings = togglesState,
+				WindowPos = { X = mainFrame.AbsolutePosition.X, Y = mainFrame.AbsolutePosition.Y },
+				AutoLoad = autoLoadActive
+			}
+			saveToFile("autoload_settings", settingsData)
+		end
+		if callback then callback(state) end
+	end
+
+	toggleBtn.MouseButton1Click:Connect(function()
+		setState(not state)
+	end)
+
+	UserInputService.InputBegan:Connect(function(input, gpe)
+		if gpe or not currentKey then return end
+		if input.KeyCode == currentKey or input.UserInputType == currentKey then
+			local mode = modeFunc and modeFunc() or "Click"
+			if mode == "Hold" then
+				setState(true)
+			else
+				setState(not state)
+			end
+		end
+	end)
+
+	UserInputService.InputEnded:Connect(function(input, gpe)
+		if gpe or not currentKey then return end
+		if input.KeyCode == currentKey or input.UserInputType == currentKey then
+			local mode = modeFunc and modeFunc() or "Click"
+			if mode == "Hold" then
+				setState(false)
+			end
+		end
+	end)
+
+	bindBtn.MouseButton1Click:Connect(function()
+		bindBtn.Text = "..."
+		local connection
+		connection = UserInputService.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.Keyboard or input.UserInputType == Enum.UserInputType.MouseButton2 then
+				currentKey = (input.UserInputType == Enum.UserInputType.MouseButton2) and Enum.UserInputType.MouseButton2 or input.KeyCode
+				bindBtn.Text = (input.UserInputType == Enum.UserInputType.MouseButton2) and "M2" or input.KeyCode.Name
+				connection:Disconnect()
+			end
+		end)
+	end)
+
+	table.insert(allElements, { Frame = frame, Name = string.lower(name) })
+
+	local toggleObj = {
+		GetState = function() return state end,
+		SetState = setState
+	}
+	registeredToggles[name] = toggleObj
+	return toggleObj
+end
+
+local function createSelector(parent, name, options, callback)
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.new(1, 0, 0, 24)
+	frame.BackgroundTransparency = 1
+	frame.Parent = parent
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(0.42, 0, 1, 0)
+	label.BackgroundTransparency = 1
+	label.Text = name
+	label.TextColor3 = Color3.fromRGB(150, 140, 170)
+	label.Font = Enum.Font.Code
+	label.TextSize = 9
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.Parent = frame
+
+	local currentIndex = 1
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(0.58, 0, 1, 0)
+	btn.Position = UDim2.new(0.42, 0, 0, 0)
+	btn.BackgroundColor3 = Color3.fromRGB(14, 10, 20)
+	btn.BorderSizePixel = 1
+	btn.BorderColor3 = Color3.fromRGB(50, 40, 70)
+	btn.Text = options[currentIndex]
+	btn.TextColor3 = Color3.fromRGB(190, 180, 210)
+	btn.Font = Enum.Font.Code
+	btn.TextSize = 9
+	btn.Parent = frame
+
+	btn.MouseButton1Click:Connect(function()
+		currentIndex = currentIndex % #options + 1
+		btn.Text = options[currentIndex]
+		if callback then callback(options[currentIndex]) end
+	end)
+
+	table.insert(allElements, { Frame = frame, Name = string.lower(name) })
+
+	return {
+		GetValue = function() return options[currentIndex] end
+	}
+end
+
+local function createSlider(parent, name, min, max, default, callback)
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.new(1, 0, 0, 34)
+	frame.BackgroundTransparency = 1
+	frame.Parent = parent
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, 0, 0, 14)
+	label.BackgroundTransparency = 1
+	label.Text = name .. ": " .. tostring(default)
+	label.TextColor3 = Color3.fromRGB(150, 140, 170)
+	label.Font = Enum.Font.Code
+	label.TextSize = 9
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.Parent = frame
+
+	local sliderBg = Instance.new("Frame")
+	sliderBg.Size = UDim2.new(1, 0, 0, 5)
+	sliderBg.Position = UDim2.new(0, 0, 0, 18)
+	sliderBg.BackgroundColor3 = Color3.fromRGB(14, 10, 20)
+	sliderBg.BorderSizePixel = 1
+	sliderBg.BorderColor3 = Color3.fromRGB(50, 40, 70)
+	sliderBg.Parent = frame
+
+	local sliderFill = Instance.new("Frame")
+	sliderFill.Size = UDim2.new((default - min)/(max - min), 0, 1, 0)
+	sliderFill.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
+	sliderFill.BorderSizePixel = 0
+	sliderFill.Parent = sliderBg
+
+	local dragging = false
+	local function updateSlider(input)
+		local pos = math.clamp((input.Position.X - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X, 0, 1)
+		local val = math.floor(min + (max - min) * pos)
+		sliderFill.Size = UDim2.new(pos, 0, 1, 0)
+		label.Text = name .. ": " .. tostring(val)
+		if callback then callback(val) end
+	end
+
+	sliderBg.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true; updateSlider(input) end
+	end)
+	UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+	end)
+	UserInputService.InputChanged:Connect(function(input)
+		if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then updateSlider(input) end
+	end)
+
+	table.insert(allElements, { Frame = frame, Name = string.lower(name) })
+end
+
+local function createInputBox(parent, name, defaultVal, callback)
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.new(1, 0, 0, 24)
+	frame.BackgroundTransparency = 1
+	frame.Parent = parent
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(0.55, 0, 1, 0)
+	label.BackgroundTransparency = 1
+	label.Text = name
+	label.TextColor3 = Color3.fromRGB(150, 140, 170)
+	label.Font = Enum.Font.Code
+	label.TextSize = 9
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.Parent = frame
+
+	local textBox = Instance.new("TextBox")
+	textBox.Size = UDim2.new(0.45, 0, 1, 0)
+	textBox.Position = UDim2.new(0.55, 0, 0, 0)
+	textBox.BackgroundColor3 = Color3.fromRGB(14, 10, 20)
+	textBox.BorderSizePixel = 1
+	textBox.BorderColor3 = Color3.fromRGB(50, 40, 70)
+	textBox.Text = tostring(defaultVal)
+	textBox.TextColor3 = Color3.fromRGB(190, 180, 210)
+	textBox.Font = Enum.Font.Code
+	textBox.TextSize = 9
+	textBox.Parent = frame
+
+	textBox.FocusLost:Connect(function()
+		local num = tonumber(textBox.Text)
+		if num then
+			if callback then callback(num) end
+		else
+			textBox.Text = tostring(defaultVal)
+		end
+	end)
+
+	table.insert(allElements, { Frame = frame, Name = string.lower(name) })
+end
+
+-- Nowa funkcja do tworzenia czystego przycisku akcji (np. Server Hop / Rejoin)
+local function createButton(parent, name, btnText, callback)
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.new(1, 0, 0, 24)
+	frame.BackgroundTransparency = 1
+	frame.Parent = parent
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(0.5, 0, 1, 0)
+	label.BackgroundTransparency = 1
+	label.Text = name
+	label.TextColor3 = Color3.fromRGB(150, 140, 170)
+	label.Font = Enum.Font.Code
+	label.TextSize = 9
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.Parent = frame
+
+	local actionBtn = Instance.new("TextButton")
+	actionBtn.Size = UDim2.new(0.5, 0, 0, 18)
+	actionBtn.Position = UDim2.new(0.5, 0, 0.5, -9)
+	actionBtn.BackgroundColor3 = Color3.fromRGB(14, 10, 20)
+	actionBtn.BorderSizePixel = 1
+	actionBtn.BorderColor3 = Color3.fromRGB(50, 40, 70)
+	actionBtn.Text = btnText
+	actionBtn.TextColor3 = Color3.fromRGB(160, 80, 255)
+	actionBtn.Font = Enum.Font.Code
+	actionBtn.TextSize = 8
+	actionBtn.Parent = frame
+
+	actionBtn.MouseButton1Click:Connect(function()
+		if callback then callback() end
+	end)
+
+	table.insert(allElements, { Frame = frame, Name = string.lower(name) })
+end
+
+searchBox.Changed:Connect(function()
+	local query = string.lower(searchBox.Text)
+	for _, item in pairs(allElements) do
+		if query == "" or string.find(item.Name, query) then
+			item.Frame.Visible = true
+		else
+			item.Frame.Visible = false
+		end
+	end
+end)
+
+-- --- SECTIONS ---
+
+-- 1. AIMBOT
+local aimbotGroup = createCategory("AIMBOT")
+local aimModeSelector = createSelector(aimbotGroup, "Mode", {"Hold", "Click"}, function(v) end)
+local aimbotToggle = createToggleWithBind(aimbotGroup, "Aimbot", "M2", function() return aimModeSelector.GetValue() end, function(v) end)
+local targetPartSelector = createSelector(aimbotGroup, "Target Part", {"Head", "Body"}, function(v) end)
+createToggleWithBind(aimbotGroup, "FOV Circle", "---", function() return "Click" end, function(v) fovDrawing.Visible = v end)
+createSlider(aimbotGroup, "FOV Radius", 30, 300, 80, function(val) fovDrawing.Radius = val end)
+
+RunService.RenderStepped:Connect(function()
+	fovDrawing.Position = UserInputService:GetMouseLocation()
+	if aimbotToggle.GetState() then
+		local targetPartName = (targetPartSelector.GetValue() == "Head") and "Head" or "HumanoidRootPart"
+		local closestDist = fovDrawing.Radius
+		local targetPos = nil
+
+		for _, p in pairs(Players:GetPlayers()) do
+			if p ~= player and p.Character and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
+				local part = p.Character:FindFirstChild(targetPartName) or p.Character:FindFirstChild("HumanoidRootPart")
+				if part then
+					local screenPos, onScreen = camera:WorldToViewportPoint(part.Position)
+					if onScreen then
+						local mousePos = UserInputService:GetMouseLocation()
+						local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+						if dist < closestDist then
+							closestDist = dist
+							targetPos = part.Position
+						end
+					end
+				end
+			end
+		end
+
+		if targetPos then
+			camera.CFrame = CFrame.new(camera.CFrame.Position, targetPos)
+		end
+	end
+end)
+
+-- 2. WALLHACK
+local whGroup = createCategory("WALLHACK")
+local espLinesToggle = createToggleWithBind(whGroup, "ESP Lines", "---", function() return "Click" end, function(v) end)
+local espHighlightToggle = createToggleWithBind(whGroup, "ESP HighLight", "---", function() return "Click" end, function(v) end)
+local espBoxToggle = createToggleWithBind(whGroup, "ESP Box", "---", function() return "Click" end, function(v) end)
+
+local activeTracers = {}
+local activeBoxes = {}
+
+RunService.RenderStepped:Connect(function()
+	for _, p in pairs(Players:GetPlayers()) do
+		if p ~= player and p.Character then
+			local char = p.Character
+			if espHighlightToggle.GetState() then
+				local hl = char:FindFirstChild("KurwaHighlight")
+				if not hl then
+					hl = Instance.new("Highlight")
+					hl.Name = "KurwaHighlight"
+					hl.FillColor = Color3.fromRGB(138, 43, 226)
+					hl.OutlineColor = Color3.fromRGB(200, 180, 225)
+					hl.FillTransparency = 0.3
+					hl.OutlineTransparency = 0
+					hl.Parent = char
+				end
+				hl.Enabled = true
+			else
+				local hl = char:FindFirstChild("KurwaHighlight")
+				if hl then hl.Enabled = false end
+			end
+		end
+	end
+
+	if espLinesToggle.GetState() then
+		for _, p in pairs(Players:GetPlayers()) do
+			if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+				if not activeTracers[p] then
+					local line = Drawing.new("Line")
+					line.Visible = false
+					line.Color = Color3.fromRGB(160, 32, 240)
+					line.Thickness = 1
+					activeTracers[p] = line
+				end
+				local line = activeTracers[p]
+				local hrp = p.Character.HumanoidRootPart
+				local screenPos, onScreen = camera:WorldToViewportPoint(hrp.Position)
+				if onScreen then
+					line.From = Vector2.new(camera.ViewportSize.X / 2, 0)
+					line.To = Vector2.new(screenPos.X, screenPos.Y)
+					line.Visible = true
+				else
+					line.Visible = false
+				end
+			end
+		end
+	else
+		for _, line in pairs(activeTracers) do line.Visible = false line:Remove() end
+		activeTracers = {}
+	end
+
+	if espBoxToggle.GetState() then
+		for _, p in pairs(Players:GetPlayers()) do
+			if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+				if not activeBoxes[p] then
+					local box = Drawing.new("Square")
+					box.Visible = false
+					box.Color = Color3.fromRGB(160, 32, 240)
+					box.Thickness = 1
+					box.Filled = false
+					activeBoxes[p] = box
+				end
+				local box = activeBoxes[p]
+				local char = p.Character
+				local hrp = char.HumanoidRootPart
+				local head = char:FindFirstChild("Head")
+				
+				if hrp and head then
+					local topPos, topOnScreen = camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
+					local botPos, botOnScreen = camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
+					
+					if topOnScreen and botOnScreen then
+						local height = math.abs(topPos.Y - botPos.Y)
+						local width = height * 0.6
+						box.Size = Vector2.new(width, height)
+						box.Position = Vector2.new(topPos.X - width / 2, topPos.Y)
+						box.Visible = true
+					else
+						box.Visible = false
+					end
+				else
+					box.Visible = false
+				end
+			end
+		end
+	else
+		for _, box in pairs(activeBoxes) do box.Visible = false box:Remove() end
+		activeBoxes = {}
+	end
+end)
+
+-- 3. UTILITIES
+local utilGroup = createCategory("UTILITIES")
+
+createToggleWithBind(utilGroup, "Instant Interact", "---", function() return "Click" end, function(v)
+	if v then
+		task.spawn(function()
+			while task.wait(0.2) do
+				for _, desc in pairs(workspace:GetDescendants()) do
+					if desc:IsA("ProximityPrompt") then desc.HoldDuration = 0 end
+				end
+			end
+		end)
+	end
+end)
+
+local noclipEnabled = false
+createToggleWithBind(utilGroup, "Noclip", "---", function() return "Click" end, function(v) noclipEnabled = v end)
+RunService.Stepped:Connect(function()
+	if noclipEnabled and character then
+		for _, part in pairs(character:GetDescendants()) do
+			if part:IsA("BasePart") then part.CanCollide = false end
+		end
+	end
+end)
+
+local infJumpEnabled = false
+createToggleWithBind(utilGroup, "Inf Jump", "---", function() return "Click" end, function(v) infJumpEnabled = v end)
+UserInputService.JumpRequest:Connect(function()
+	if infJumpEnabled and humanoid then
+		humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+	end
+end)
+
+local speedEnabled = false
+local customSpeed = 16
+createToggleWithBind(utilGroup, "Speed", "---", function() return "Click" end, function(v)
+	speedEnabled = v
+	if not speedEnabled and humanoid then humanoid.WalkSpeed = 16 end
+end)
+createInputBox(utilGroup, "WalkSpeed Value", 16, function(val) customSpeed = val end)
+RunService.RenderStepped:Connect(function()
+	if speedEnabled and humanoid then humanoid.WalkSpeed = customSpeed end
+end)
+
+local spinEnabled = false
+local spinSpeedVal = 10
+createToggleWithBind(utilGroup, "Spinbot", "---", function() return "Click" end, function(v) spinEnabled = v end)
+createInputBox(utilGroup, "Spin Speed Val", 10, function(val) spinSpeedVal = val end)
+RunService.RenderStepped:Connect(function(dt)
+	if spinEnabled and rootPart then
+		rootPart.CFrame = rootPart.CFrame * CFrame.Angles(0, math.rad(spinSpeedVal * 15 * dt * 10), 0)
+	end
+end)
+
+local flyEnabled = false
+local flySpeedVal = 50
+createToggleWithBind(utilGroup, "Fly", "---", function() return "Click" end, function(v)
+	flyEnabled = v
+	if flyEnabled and rootPart and humanoid then
+		humanoid.PlatformStand = true
+		local bv = Instance.new("BodyVelocity")
+		bv.Name = "KurwaFlyVel"
+		bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+		bv.Velocity = Vector3.new(0, 0, 0)
+		bv.Parent = rootPart
+
+		local bg = Instance.new("BodyGyro")
+		bg.Name = "KurwaFlyGyro"
+		bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+		bg.CFrame = rootPart.CFrame
+		bg.Parent = rootPart
+
+		task.spawn(function()
+			while flyEnabled and rootPart and camera do
+				local moveDir = Vector3.new(0,0,0)
+				if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + camera.CFrame.LookVector end
+				if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - camera.CFrame.LookVector end
+				if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - camera.CFrame.RightVector end
+				if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + camera.CFrame.RightVector end
+				bv.Velocity = moveDir * flySpeedVal
+				bg.CFrame = camera.CFrame
+				task.wait()
+			end
+			if rootPart:FindFirstChild("KurwaFlyVel") then rootPart.KurwaFlyVel:Destroy() end
+			if rootPart:FindFirstChild("KurwaFlyGyro") then rootPart.KurwaFlyGyro:Destroy() end
+			if humanoid then humanoid.PlatformStand = false end
+		end)
+	else
+		if humanoid then humanoid.PlatformStand = false end
+		if rootPart then
+			if rootPart:FindFirstChild("KurwaFlyVel") then rootPart.KurwaFlyVel:Destroy() end
+			if rootPart:FindFirstChild("KurwaFlyGyro") then rootPart.KurwaFlyGyro:Destroy() end
+		end
+	end
+end)
+createInputBox(utilGroup, "Fly Speed Val", 50, function(val) flySpeedVal = val end)
+
+-- 4. TP TO PLAYER
+local tpGroup = createCategory("TP TO PLAYER")
+
+local function refreshPlayerList()
+	for _, child in pairs(tpGroup:GetChildren()) do
+		if child:IsA("TextButton") and child.Name == "PlayerBtn" then child:Destroy() end
+	end
+	for _, p in pairs(Players:GetPlayers()) do
+		if p ~= player then
+			local pBtn = Instance.new("TextButton")
+			pBtn.Name = "PlayerBtn"
+			pBtn.Size = UDim2.new(1, 0, 0, 20)
+			pBtn.BackgroundColor3 = Color3.fromRGB(14, 10, 20)
+			pBtn.BorderSizePixel = 1
+			pBtn.BorderColor3 = Color3.fromRGB(50, 40, 70)
+			pBtn.Text = "  > " .. p.Name
+			pBtn.TextColor3 = Color3.fromRGB(200, 180, 225)
+			pBtn.Font = Enum.Font.Code
+			pBtn.TextSize = 9
+			pBtn.TextXAlignment = Enum.TextXAlignment.Left
+			pBtn.Parent = tpGroup
+
+			pBtn.MouseButton1Click:Connect(function()
+				if p.Character and p.Character:FindFirstChild("HumanoidRootPart") and rootPart then
+					rootPart.CFrame = p.Character.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
+				end
+			end)
+		end
+	end
+end
+refreshPlayerList()
+Players.PlayerAdded:Connect(refreshPlayerList)
+Players.PlayerRemoving:Connect(refreshPlayerList)
+
+-- 5. SERVER (Server Hop & Server Rejoin jako przyciski Press)
+local serverGroup = createCategory("SERVER")
+
+local function serverHop()
+	local site
+	local suc = pcall(function()
+		site = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
+	end)
+	if suc and site and site.data then
+		for _, server in ipairs(site.data) do
+			if server.playing < server.maxPlayers and server.id ~= game.JobId then
+				TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, player)
+				break
+			end
+		end
+	end
+end
+
+createButton(serverGroup, "Server Hop", "PRESS", function()
+	task.spawn(serverHop)
+end)
+
+createButton(serverGroup, "Server Rejoin", "PRESS", function()
+	TeleportService:Teleport(game.PlaceId, player)
+end)
+
+-- 6. VISUALS
+local visualGroup = createCategory("VISUALS")
+
+createToggleWithBind(visualGroup, "Fullbright", "---", function() return "Click" end, function(v) 
+	if v then
+		Lighting.Brightness = 2
+		Lighting.ClockTime = 14
+		Lighting.GlobalShadows = false
+	else
+		Lighting.Brightness = 1
+		Lighting.GlobalShadows = true
+	end
+end)
+
+local fovEnabled = false
+local customFOV = 70
+createToggleWithBind(visualGroup, "Camera FOV", "---", function() return "Click" end, function(v)
+	fovEnabled = v
+	if not fovEnabled and camera then camera.FieldOfView = 70 end
+end)
+createSlider(visualGroup, "FOV Value", 50, 120, 70, function(val)
+	customFOV = val
+end)
+RunService.RenderStepped:Connect(function()
+	if fovEnabled and camera then
+		camera.FieldOfView = customFOV
+	end
+end)
+
+local stretchEnabled = false
+createToggleWithBind(visualGroup, "Stretch Res", "---", function() return "Click" end, function(v)
+	stretchEnabled = v
+end)
+
+RunService.RenderStepped:Connect(function()
+	if stretchEnabled and camera then
+		camera.CFrame = camera.CFrame * CFrame.new(0, 0, 0, 1, 0, 0, 0, 0.67, 0, 0, 0, 1)
+	end
+end)
+
+createToggleWithBind(visualGroup, "Self Highlight", "---", function() return "Click" end, function(v)
+	if v and character then
+		local hl = character:FindFirstChild("KurwaSelfHl") or Instance.new("Highlight")
+		hl.Name = "KurwaSelfHl"
+		hl.FillColor = Color3.fromRGB(160, 32, 240)
+		hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+		hl.Parent = character
+	else
+		if character and character:FindFirstChild("KurwaSelfHl") then
+			character.KurwaSelfHl:Destroy()
+		end
+	end
+end)
+
+createToggleWithBind(visualGroup, "Low Texture", "---", function() return "Click" end, function(v)
+	for _, obj in pairs(workspace:GetDescendants()) do
+		if v then
+			if obj:IsA("Texture") or obj:IsA("Decal") then
+				obj.Transparency = 1
+			elseif obj:IsA("BasePart") then
+				obj.Material = Enum.Material.SmoothPlastic
+			end
+		end
+	end
+end)
+
+local colorCorrection = Lighting:FindFirstChild("KurwaColorCorrection") or Instance.new("ColorCorrectionEffect")
+colorCorrection.Name = "KurwaColorCorrection"
+colorCorrection.Parent = Lighting
+colorCorrection.Enabled = false
+
+createToggleWithBind(visualGroup, "Texture Color", "---", function() return "Click" end, function(v)
+	colorCorrection.Enabled = v
+	colorCorrection.TintColor = Color3.fromRGB(200, 130, 255)
+end)
+
+-- Automatyczne wczytanie przy starcie (Auto-load dla wszystkich opcji)
+if initialAutoLoad and initialAutoLoad.AutoLoad and initialAutoLoad.Settings then
+	task.spawn(function()
+		task.wait(0.5)
+		for tName, stateVal in pairs(initialAutoLoad.Settings) do
+			if registeredToggles[tName] then
+				registeredToggles[tName].SetState(stateVal)
+			end
+		end
+	end)
+end
+
+-- --- WINDOW CONTROLS ---
+local minimized = false
+minButton.MouseButton1Click:Connect(function()
+	minimized = not minimized
+	if minimized then
+		contentContainer.Visible = false
+		configPopup.Visible = false
+		mainFrame.Size = UDim2.new(0, 260, 0, 26)
+		minButton.Text = "+"
+	else
+		contentContainer.Visible = true
+		mainFrame.Size = UDim2.new(0, 260, 0, 380)
+		minButton.Text = "-"
+	end
+end)
+
+closeButton.MouseButton1Click:Connect(function()
+	fovDrawing:Remove()
+	if colorCorrection then colorCorrection:Destroy() end
+	screenGui:Destroy()
+end)
+
+UserInputService.InputBegan:Connect(function(input)
+	if input.KeyCode == Enum.KeyCode.RightShift then
+		mainFrame.Visible = not mainFrame.Visible
+		fovDrawing.Visible = mainFrame.Visible and fovDrawing.Visible
+	end
+end)
